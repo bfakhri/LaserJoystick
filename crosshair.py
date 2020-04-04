@@ -20,12 +20,12 @@ class Targeter:
     def __init__(self, img_shape):
         self.asset_dir = './assets/'
         self.pos = [img_shape[0]/2, img_shape[1]/2]
-        self.crosshair_img = cv2.imread(self.asset_dir+'crosshair.png', cv2.IMREAD_UNCHANGED)
+        self.crosshair_img = cv2.imread(self.asset_dir+'crosshair.png', cv2.IMREAD_UNCHANGED)/255.0
         # Crosshair size as a proportion of the image
         self.crosshair_scale = 0.15
         self.sensitivity = 10
         self.ch_size = int(np.max(img_shape)*self.crosshair_scale)
-        self.ch_rs = cv2.resize(self.crosshair_img, (self.ch_size, self.ch_size))
+        self.ch_rs = cv2.resize(self.crosshair_img, (self.ch_size, self.ch_size), cv2.INTER_LINEAR)
 
         # Joystick settings
         self.deadzone = 0.2
@@ -65,6 +65,11 @@ class Targeter:
         '''
         Draws a crosshair at the position self.pos
         '''
+        # Save properties to convert it back later
+        old_dtype = img.dtype
+        old_img_max = np.max(img)
+        img = img.astype(np.float32)/old_img_max
+
         # Offset half of the crosshair width/height
         mid_offset = self.ch_size/2
         # Find where the crosshair will be on real image
@@ -77,6 +82,7 @@ class Targeter:
         y_max_clip = int(abs(y_max - np.clip(y_max, 0, img.shape[0]-1)))
         x_min_clip = int(abs(x_min - np.clip(x_min, 0, img.shape[1]-1)))
         x_max_clip = int(abs(x_max - np.clip(x_max, 0, img.shape[1]-1)))
+
         # Crop crosshair if it goes over the image boundaries
         crosshair = self.ch_rs[y_min_clip:self.ch_size-y_max_clip, x_min_clip:self.ch_size-x_max_clip]
         # Remove crosshair portion of image
@@ -84,7 +90,7 @@ class Targeter:
         # Add crosshair
         img[y_min:y_max, x_min:x_max] += crosshair[..., :3]
 
-        return img
+        return (img*old_img_max).astype(old_dtype)
 
 
 if __name__ == '__main__':
