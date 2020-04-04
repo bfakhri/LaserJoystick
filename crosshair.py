@@ -22,12 +22,14 @@ class Targeter:
         self.pos = [img_shape[0]/2, img_shape[1]/2]
         self.crosshair_img = cv2.imread(self.asset_dir+'crosshair.png', cv2.IMREAD_UNCHANGED)
         # Crosshair size as a proportion of the image
-        self.crosshair_scale = 0.025
-        ch_size = int(np.max(img_shape)*self.crosshair_scale)
-        self.ch_rs = cv2.resize(self.crosshair_img, (ch_size, ch_size))
+        self.crosshair_scale = 0.15
+        self.sensitivity = 10
+        self.ch_size = int(np.max(img_shape)*self.crosshair_scale)
+        self.ch_rs = cv2.resize(self.crosshair_img, (self.ch_size, self.ch_size))
 
         # Joystick settings
         self.deadzone = 0.2
+        self.mapping = {0: 1, 1: 0, 3: 1, 4: 0}
 
         # Start the polling thread
         poll_thread = threading.Thread(target=self.poll_joystick)
@@ -51,11 +53,11 @@ class Targeter:
             for i in range( axes ):
                 axis = joystick.get_axis( i )
                 #print('Name {} Axis {} value: {:>6.3f}'.format(name, i, axis) )
-                print(self.pos)
+                #print(self.pos)
                 if(abs(axis) > self.deadzone):
-                    self.pos[i] += axis
-            clock.tick(40)
-            print('')
+                    self.pos[self.mapping[i]] += axis*self.sensitivity
+            clock.tick(20)
+            #print('')
 
 
 
@@ -66,19 +68,19 @@ class Targeter:
         # Offset half of the crosshair width/height
         mid_offset = self.ch_size/2
         # Find where the crosshair will be on real image
-        y_min = self.pos[0]-mid_offset
-        y_max = self.pos[0]+mid_offset
-        x_min = self.pos[1]-mid_offset
-        x_max = self.pos[1]+mid_offset
+        y_min = int(self.pos[0]-mid_offset) 
+        y_max = int(self.pos[0]+mid_offset) 
+        x_min = int(self.pos[1]-mid_offset) 
+        x_max = int(self.pos[1]+mid_offset) 
         # Find how much of the ch we have to clip off
-        y_min_clip = abs(y_min - np.clip(y_min, 0, img.shape[0]-1))
-        y_max_clip = abs(y_max - np.clip(y_max, 0, img.shape[0]-1))
-        x_min_clip = abs(x_min - np.clip(x_min, 0, img.shape[1]-1))
-        x_max_clip = abs(x_max - np.clip(x_max, 0, img.shape[1]-1))
+        y_min_clip = int(abs(y_min - np.clip(y_min, 0, img.shape[0]-1)))
+        y_max_clip = int(abs(y_max - np.clip(y_max, 0, img.shape[0]-1)))
+        x_min_clip = int(abs(x_min - np.clip(x_min, 0, img.shape[1]-1)))
+        x_max_clip = int(abs(x_max - np.clip(x_max, 0, img.shape[1]-1)))
         # Crop crosshair if it goes over the image boundaries
-        crosshair = self.ch_rs[y_min_clip:y_max_clip, x_min_clip:x_max_clip]
+        crosshair = self.ch_rs[y_min_clip:self.ch_size-y_max_clip, x_min_clip:self.ch_size-x_max_clip]
         # Remove crosshair portion of image
-        img[y_min:y_max, x_min:x_max] *= 1.0 - crosshair[..., -1]
+        img[y_min:y_max, x_min:x_max] *= (1.0 - crosshair[..., -1, np.newaxis]).astype(np.uint8)
         # Add crosshair
         img[y_min:y_max, x_min:x_max] += crosshair[..., :3]
 
