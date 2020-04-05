@@ -64,7 +64,6 @@ class Targeter:
                     # Keep crosshair in boundaries of image
                     self.pos = np.clip(self.pos, 0, self.img_shape[:2])
             clock.tick(20)
-            #print('')
 
 
 
@@ -97,17 +96,9 @@ class Targeter:
         x_min_clip = int(abs(x_min - x_min_real))
         x_max_clip = int(abs(x_max - x_max_real))
 
-        print('POS:', self.pos)
-        print('clips: ', y_min_clip, y_max_clip, x_min_clip, x_max_clip)
-
         # Crop crosshair if it goes over the image boundaries
         crosshair = self.ch_rs[y_min_clip:self.ch_size-y_max_clip, x_min_clip:self.ch_size-x_max_clip]
-        print('ch slices: ', y_min_clip, self.ch_size-y_max_clip, x_min_clip, self.ch_size-x_max_clip)
-        print('ch.shape: ', crosshair.shape)
-        print('min/maxes: ', y_min, y_max, x_min, x_max)
-        print('min/maxes_real: ', y_min_real, y_max_real, x_min_real, x_max_real)
         # Remove crosshair portion of image
-        print('real.shape: ', img[y_min_real:y_max_real, x_min_real:x_max_real].shape)
         img[y_min_real:y_max_real, x_min_real:x_max_real] *= (1.0 - crosshair[..., -1, np.newaxis])
         # Add crosshair
         img[y_min_real:y_max_real, x_min_real:x_max_real] += crosshair[..., :3]
