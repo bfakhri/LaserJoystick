@@ -19,13 +19,17 @@ class Targeter:
     '''
     def __init__(self, img_shape):
         self.asset_dir = './assets/'
-        self.pos = [img_shape[0]/2, img_shape[1]/2]
+        self.pos = np.array([img_shape[0]/2, img_shape[1]/2])
         self.crosshair_img = cv2.imread(self.asset_dir+'crosshair.png', cv2.IMREAD_UNCHANGED)/255.0
+        cv2.imshow('OG CH: ', self.crosshair_img)
         # Crosshair size as a proportion of the image
         self.crosshair_scale = 0.15
         self.sensitivity = 10
         self.ch_size = int(np.max(img_shape)*self.crosshair_scale)
         self.ch_rs = cv2.resize(self.crosshair_img, (self.ch_size, self.ch_size), cv2.INTER_LINEAR)
+        self.img_shape = img_shape
+        cv2.imshow('RS CH: ', self.ch_rs)
+        cv2.waitKey(-1)
 
         # Joystick settings
         self.deadzone = 0.2
@@ -56,6 +60,8 @@ class Targeter:
                 #print(self.pos)
                 if(abs(axis) > self.deadzone):
                     self.pos[self.mapping[i]] += axis*self.sensitivity
+                    # Keep crosshair in boundaries of image
+                    self.pos = np.clip(self.pos, 0, self.img_shape[:2])
             clock.tick(20)
             #print('')
 
@@ -72,23 +78,38 @@ class Targeter:
 
         # Offset half of the crosshair width/height
         mid_offset = self.ch_size/2
-        # Find where the crosshair will be on real image
-        y_min = int(self.pos[0]-mid_offset) 
-        y_max = int(self.pos[0]+mid_offset) 
-        x_min = int(self.pos[1]-mid_offset) 
-        x_max = int(self.pos[1]+mid_offset) 
-        # Find how much of the ch we have to clip off
-        y_min_clip = int(abs(y_min - np.clip(y_min, 0, img.shape[0]-1)))
-        y_max_clip = int(abs(y_max - np.clip(y_max, 0, img.shape[0]-1)))
-        x_min_clip = int(abs(x_min - np.clip(x_min, 0, img.shape[1]-1)))
-        x_max_clip = int(abs(x_max - np.clip(x_max, 0, img.shape[1]-1)))
+        # Round the position
+        pos = self.pos.astype(np.int32)
+        # Find boundaries relative to the input image (unbounded)
+        y_min = int(pos[0]-mid_offset) 
+        y_max = int(pos[0]+mid_offset) 
+        x_min = int(pos[1]-mid_offset) 
+        x_max = int(pos[1]+mid_offset) 
+        # Bound where the crosshair will be on real image
+        y_min_real = int(np.clip(y_min, 0, img.shape[0]-1))
+        y_max_real = int(np.clip(y_max, 0, img.shape[0]-1))
+        x_min_real = int(np.clip(x_min, 0, img.shape[1]-1))
+        x_max_real = int(np.clip(x_max, 0, img.shape[1]-1))
+        # Find how much we clip off
+        y_min_clip = int(abs(y_min - y_min_real))
+        y_max_clip = int(abs(y_max - y_max_real))
+        x_min_clip = int(abs(x_min - x_min_real))
+        x_max_clip = int(abs(x_max - x_max_real))
+
+        print('POS:', self.pos)
+        print('clips: ', y_min_clip, y_max_clip, x_min_clip, x_max_clip)
 
         # Crop crosshair if it goes over the image boundaries
         crosshair = self.ch_rs[y_min_clip:self.ch_size-y_max_clip, x_min_clip:self.ch_size-x_max_clip]
+        print('ch slices: ', y_min_clip, self.ch_size-y_max_clip, x_min_clip, self.ch_size-x_max_clip)
+        print('ch.shape: ', crosshair.shape)
+        print('min/maxes: ', y_min, y_max, x_min, x_max)
+        print('min/maxes_real: ', y_min_real, y_max_real, x_min_real, x_max_real)
         # Remove crosshair portion of image
-        img[y_min:y_max, x_min:x_max] *= (1.0 - crosshair[..., -1, np.newaxis]).astype(np.uint8)
+        print('real.shape: ', img[y_min_real:y_max_real, x_min_real:x_max_real].shape)
+        img[y_min_real:y_max_real, x_min_real:x_max_real] *= (1.0 - crosshair[..., -1, np.newaxis])
         # Add crosshair
-        img[y_min:y_max, x_min:x_max] += crosshair[..., :3]
+        img[y_min_real:y_max_real, x_min_real:x_max_real] += crosshair[..., :3]
 
         return (img*old_img_max).astype(old_dtype)
 
