@@ -20,11 +20,11 @@ class Targeter:
     def __init__(self, img_shape):
         self.asset_dir = './assets/'
         self.pos = np.array([img_shape[0]/2, img_shape[1]/2])
-        self.crosshair_img = cv2.imread(self.asset_dir+'crosshair.png', cv2.IMREAD_UNCHANGED)/255.0
+        self.crosshair_img = cv2.imread(self.asset_dir+'crosshair_2.png', cv2.IMREAD_UNCHANGED)/255.0
         cv2.imshow('OG CH: ', self.crosshair_img)
         # Crosshair size as a proportion of the image
         self.crosshair_scale = 0.15
-        self.sensitivity = 10
+        self.sensitivity = 40
         self.ch_size = int(np.max(img_shape)*self.crosshair_scale)
         self.ch_rs = cv2.resize(self.crosshair_img, (self.ch_size, self.ch_size), cv2.INTER_LINEAR)
         self.img_shape = img_shape
@@ -56,10 +56,11 @@ class Targeter:
             name = joystick.get_name()
             for i in range( axes ):
                 axis = joystick.get_axis( i )
-                #print('Name {} Axis {} value: {:>6.3f}'.format(name, i, axis) )
-                #print(self.pos)
                 if(abs(axis) > self.deadzone):
-                    self.pos[self.mapping[i]] += axis*self.sensitivity
+                    try:
+                        self.pos[self.mapping[i]] += axis*self.sensitivity
+                    except KeyError:
+                        print('Unknown Key Mapping!: ', i)
                     # Keep crosshair in boundaries of image
                     self.pos = np.clip(self.pos, 0, self.img_shape[:2])
             clock.tick(20)
