@@ -37,7 +37,7 @@ class Targeter:
         self.snap_toggle_button = 5
         self.snap_loss_num = 10 # num frames to lose tracking from
         self.snap_loss_cnt = 0 # num frame where object has been lost
-        self.snap_max_dist = 0.35 # Distance b/t crosshair and object before snap is lost (proportion of img)
+        self.snap_max_dist = 0.25 # Distance b/t crosshair and object before snap is lost (proportion of img dims)
         # shape (bs, 4) -> (bs, (x,y,w,y))
         self.last_bbs = []
 
@@ -61,12 +61,7 @@ class Targeter:
                     # Check buttons
                     buttons = joystick.get_numbuttons()
                     if(joystick.get_button(self.snap_toggle_button) == 1):
-                        self.snapped = not self.snapped
-                        if(self.snapped):
-                            print('Snapping ON')
-                            self.snap()
-                        else:
-                            print('Snapping OFF')
+                        self.snap()
 
                 if event.type == pygame.JOYBUTTONUP:
                     print("Joystick button released.")
@@ -91,18 +86,22 @@ class Targeter:
 
             clock.tick(20)
 
-    def snap(self):
+    def snap(self, enforce_max_dist=False):
         '''
         Snaps to the closest bounding box 
         '''
         if(len(self.last_bbs) > 0):
             # Convert (x,y,w,h) to centroids (x,y)
             box_centers = self.last_bbs[:, 0:2] + self.last_bbs[:, 2:4]/2 
-            print('Box centers: ', box_centers.shape, box_centers)
             distances = np.sqrt(np.sum((box_centers-self.pos[::-1])**2, axis=-1))
-            print('Distances: ', distances)
             closest = np.argmin(distances) 
-            self.pos = box_centers[closest, ::-1]
+            if(not enforce_max_dist):
+                self.pos = box_centers[closest, ::-1]
+            elif(distances[closest] < self.snap_max_dist*np.min(self.img_shape[:2])):
+                self.pos = box_centers[closest, ::-1]
+            else:
+                print('Nearst box too far away to track')
+            self.snapped = True
         else:
             print('Failed to find a box')
             self.snapped = False
@@ -113,9 +112,14 @@ class Targeter:
         '''
         #if(self.snapped):
         if(len(boxes) > 0):
-            print(boxes)
             self.last_bbs = np.array(boxes)
             #print(self.last_bbs.shape)
+            self.snap_loss_cnt = 0 
+            self.snap(enforce_max_dist=True)
+        else:
+            self.snap_loss_cnt += 1
+            if(self.snap_loss_cnt > self.snap_loss_num):
+                self.snapped = False
 
 
 
