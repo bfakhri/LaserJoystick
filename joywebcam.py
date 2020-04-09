@@ -20,6 +20,7 @@ while(True):
     # Detect faces and draw bbs
     detected_faces, frame = model.detect_and_bbimg(frame)
     # Draw crosshair on frame
+    targeter.track(detected_faces)
     frame = targeter.draw_crosshair(frame)
 
     # Display the resulting frame

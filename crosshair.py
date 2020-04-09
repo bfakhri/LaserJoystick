@@ -30,7 +30,16 @@ class Targeter:
 
         # Joystick settings
         self.deadzone = 0.2
-        self.mapping = {0: 1, 1: 0, 3: 1, 4: 0}
+        self.joystick_mapping = {0: 1, 1: 0, 3: 1, 4: 0}
+
+        # Tracking settings
+        self.snapped = False
+        self.snap_toggle_button = 5
+        self.snap_loss_num = 10 # num frames to lose tracking from
+        self.snap_loss_cnt = 0 # num frame where object has been lost
+        self.snap_max_dist = 0.35 # Distance b/t crosshair and object before snap is lost (proportion of img)
+        # shape (bs, 4) -> (bs, (x,y,w,y))
+        self.last_bbs = []
 
         # Start the polling thread
         poll_thread = threading.Thread(target=self.poll_joystick)
@@ -43,10 +52,27 @@ class Targeter:
         # Assumes the xbox 360 controller is 0
         # Manage the polling rate
         clock = pygame.time.Clock()
-        while(True):
+        done = False
+        while(not done):
+            # Event detection
             for event in pygame.event.get(): # User did something
+                if event.type == pygame.JOYBUTTONDOWN:
+                    print("Joystick button pressed.")
+                    # Check buttons
+                    buttons = joystick.get_numbuttons()
+                    if(joystick.get_button(self.snap_toggle_button) == 1):
+                        self.snapped = not self.snapped
+                        if(self.snapped):
+                            print('Snapping ON')
+                            self.snap()
+                        else:
+                            print('Snapping OFF')
+
+                if event.type == pygame.JOYBUTTONUP:
+                    print("Joystick button released.")
                 if event.type == pygame.QUIT: # If user clicked close
                     done=True # Flag that we are done so we exit this loop
+            # Poll the joysticks (dual analog)
             joystick = pygame.joystick.Joystick(0)
             joystick.init()
             axes = joystick.get_numaxes()
@@ -55,12 +81,42 @@ class Targeter:
                 axis = joystick.get_axis( i )
                 if(abs(axis) > self.deadzone):
                     try:
-                        self.pos[self.mapping[i]] += axis*self.sensitivity
+                        self.pos[self.joystick_mapping[i]] += axis*self.sensitivity
                     except KeyError:
                         print('Unknown Key Mapping!: ', i)
                     # Keep crosshair in boundaries of image
                     self.pos = np.clip(self.pos, 0, self.img_shape[:2])
+
+            # Enable/disable tracking
+
             clock.tick(20)
+
+    def snap(self):
+        '''
+        Snaps to the closest bounding box 
+        '''
+        if(len(self.last_bbs) > 0):
+            # Convert (x,y,w,h) to centroids (x,y)
+            box_centers = self.last_bbs[:, 0:2] + self.last_bbs[:, 2:4]/2 
+            print('Box centers: ', box_centers.shape, box_centers)
+            distances = np.sqrt(np.sum((box_centers-self.pos[::-1])**2, axis=-1))
+            print('Distances: ', distances)
+            closest = np.argmin(distances) 
+            self.pos = box_centers[closest, ::-1]
+        else:
+            print('Failed to find a box')
+            self.snapped = False
+
+    def track(self, boxes):
+        '''
+        Tracks objects from bounding boxes of form (x, y, w, h)
+        '''
+        #if(self.snapped):
+        if(len(boxes) > 0):
+            print(boxes)
+            self.last_bbs = np.array(boxes)
+            #print(self.last_bbs.shape)
+
 
 
 
