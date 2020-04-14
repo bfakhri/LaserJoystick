@@ -1,6 +1,6 @@
-##############################################
-# Trains the MSFE and Object Detection Model #
-##############################################
+############################################
+# Trains the Multi-Scale Feature Extractor #
+############################################
 
 import tensorflow as tf
 import numpy as np
