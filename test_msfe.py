@@ -23,10 +23,7 @@ ds_train = ds_train.prefetch(tf.data.experimental.AUTOTUNE)
 
 
 # Load model
-#model = MSFE_Model()
-#model.load_weights('./msfe_model.tfmodel/')
-#model = tf.keras.load('./msfe_model.tfmodel/')
-model = tf.keras.models.load_model('./msfe_model.tfmodel/')
+model = tf.keras.models.load_model('./msfe_model/')
 
 current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 train_log_dir = 'logs/audit/' + current_time + '/train'
