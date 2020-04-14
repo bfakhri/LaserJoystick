@@ -88,10 +88,6 @@ class SOD_Model:
         num_filters = 8
         output_size = 10
 
-        # Load the Feature Extractor Model
-        self.fe_model = MSFE_Model()
-        MSFE_Model.load('msfe_model.extension')
-
         # Simple object detection layers
         self.od_lyrs = []
         self.od_lyrs.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3,3), padding='same', activation='relu'))
