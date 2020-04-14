@@ -28,4 +28,4 @@ tbCallBack = tf.keras.callbacks.TensorBoard(log_dir='./logs/', update_freq='batc
 model.fit(x=ds_train, epochs=3, callbacks=[tbCallBack])
 
 # Save model
-model.save('./msfe_model.tfmodel')
+model.save('./msfe_model')
