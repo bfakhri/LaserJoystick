@@ -5,7 +5,7 @@
 import tensorflow as tf
 import numpy as np
 import tensorflow_datasets as tfds
-from sod_model import MSFE_Model
+from sod_model import MSFE_Model, SOD_Model
 import sys
 import os
 import datetime
