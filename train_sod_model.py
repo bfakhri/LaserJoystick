@@ -15,8 +15,6 @@ def imgr(sample):
     return (img, img)
     #return img
 ds_train = ds_train.map(imgr, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-#ds_train = ds_train.cache()
-#ds_train = ds_train.shuffle(ds_info.splits['train'].num_examples)
 ds_train = ds_train.batch(128)
 ds_train = ds_train.prefetch(tf.data.experimental.AUTOTUNE)
 
@@ -26,11 +24,8 @@ model = MSFE_Model()
 model.compile(optimizer='adam', loss='mse')
 
 # Train model
-#tbCallBack = tf.keras.callbacks.TensorBoard(log_dir='./logs/', update_freq='batch', histogram_freq=0, write_graph=True, write_images=True)
 tbCallBack = tf.keras.callbacks.TensorBoard(log_dir='./logs/', update_freq='batch', histogram_freq=0, write_graph=False, write_images=True)
-model.fit(x=ds_train, epochs=10, steps_per_epoch=10, callbacks=[tbCallBack])
-#model.fit(x=ds_train, epochs=10, callbacks=[tbCallBack])
-#model.fit(x=ds_train, epochs=10)
+model.fit(x=ds_train, epochs=3, callbacks=[tbCallBack])
 
 # Save model
 model.save('./msfe_model.tfmodel')
