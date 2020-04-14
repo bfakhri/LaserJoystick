@@ -29,22 +29,16 @@ ds_train = ds_train.batch(batch_size)
 ds_train = ds_train.prefetch(tf.data.experimental.AUTOTUNE)
 
 
-# Load feature extractor model, if it doesn't exist, trains it
+# Trains the feature extractor from scratch
 model_path = './msfe_model/'
-if(os.path.exists(model_path)):
-    print('Loading Multi-Scale Feature Extractor')
-    model = tf.keras.models.load_model(model_path)
-else:
-    print('Training Multi-Scale Feature Extractor from Scratch')
-    model = MSFE_Model()
-    model.compile(optimizer='adam', loss='mse')
+print('Training Multi-Scale Feature Extractor from Scratch')
+model = MSFE_Model()
+model.compile(optimizer='adam', loss='mse')
 
-    # Train model
-    tbCallBack = tf.keras.callbacks.TensorBoard(log_dir='./logs/', update_freq='batch', histogram_freq=0, write_graph=False, write_images=True)
-    model.fit(x=ds_train, epochs=3, callbacks=[tbCallBack])
+# Train model
+tbCallBack = tf.keras.callbacks.TensorBoard(log_dir='./logs/', update_freq='batch', histogram_freq=0, write_graph=False, write_images=True)
+#model.fit(x=ds_train, epochs=3, callbacks=[tbCallBack])
+model.fit(x=ds_train, epochs=1, steps_per_epoch=10, callbacks=[tbCallBack])
 
-    # Save model
-    model.save(model_path)
-
-# Instantiate and train object detection model
-
+# Save model
+model.save(model_path)
