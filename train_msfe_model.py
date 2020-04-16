@@ -41,7 +41,8 @@ else:
 
     # Train model
     tbCallBack = tf.keras.callbacks.TensorBoard(log_dir='./logs/', update_freq='batch', histogram_freq=0, write_graph=False, write_images=True)
-    model.fit(x=ds_train, epochs=3, callbacks=[tbCallBack])
+    #model.fit(x=ds_train, epochs=3, callbacks=[tbCallBack])
+    model.fit(x=ds_train, epochs=1, callbacks=[tbCallBack])
 
     # Save model
     model.save(model_path)

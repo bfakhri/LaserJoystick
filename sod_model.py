@@ -17,65 +17,50 @@ class MSFE_Model(tf.keras.Model):
 
         # Params
         num_filters = 8
+        self.stops  = np.array([1, 3, 5])
+        num_layers = np.max(self.stops)+1
 
-        # Small scale feature extractor layers
-        self.fe_small = []
-        self.fe_small.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3,3), padding='same', activation='relu'))
-        self.fe_small.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3,3), padding='same', activation='relu'))
-        self.fe_small.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3,3), padding='same', activation='relu'))
+        # Multi-scale feature extractor layers
+        self.fe_lyrs = []
+        for i in range(num_layers):
+            self.fe_lyrs.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(5,5), strides=(2,2), padding='same', activation='relu'))
 
-        # Medium scale feature extractor layers
-        self.fe_medium = []
-        self.fe_medium.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3,3), padding='same', activation='relu'))
-        self.fe_medium.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3,3), padding='same', activation='relu'))
-        self.fe_medium.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3,3), padding='same', activation='relu'))
+        # Reconstruction layers
+        self.recon_lyr = tf.keras.layers.Conv2D(filters=3, kernel_size=(3,3), strides=(1,1), padding='same', activation='relu')
 
-        # Large scale feature extractor layers
-        self.fe_large = []
-        self.fe_large.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3,3), padding='same', activation='relu'))
-        self.fe_large.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3,3), padding='same', activation='relu'))
-        self.fe_large.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3,3), padding='same', activation='relu'))
-
-        # Reconstruction layers (just for pre-training)
-        self.recon = []
-        self.recon.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3,3), padding='same', activation='relu'))
-        self.recon.append(tf.keras.layers.Conv2D(filters=num_filters, kernel_size=(3,3), padding='same', activation='relu'))
-        self.recon.append(tf.keras.layers.Conv2D(filters=3, kernel_size=(3,3), padding='same', activation='relu'))
-
-    def call(self, x, training=False):
+    def call(self, x, reconstruct=True):
         ''' 
         Trains as an autoencoder but provides features during inference
         '''
         h = x
-     
+        saved_h = []
+        print('Orig: ', h.shape)
         # Small scale feature extractor layers
-        for layer in self.fe_small:
+        for idx,layer in enumerate(self.fe_lyrs):
             h = layer(h)
+            if(np.any(idx == self.stops)):
+                saved_h.append(h)
+                print(idx, h.shape, '\tSaved!')
+            else:
+                print(idx, h.shape)
 
-        features_small = h
-
-        # Medium scale feature extractor layers
-        for layer in self.fe_medium:
-            h = layer(h)
-
-        features_medium = h
-
-        # Large scale feature extractor layers
-        for layer in self.fe_large:
-            h = layer(h)
-
-        features_large = h
-
-        features_all = tf.concat([features_small, features_medium, features_large], axis=-1)
-        if(training):
-            # Reconstruct the original image
-            for layer in self.recon:
-                features_all = layer(features_all)
-
-            return features_all
+        if(reconstruct):
+            # Concat all the saved features for reconstruction
+            saved_h_rs = []
+            for feats in saved_h:
+                print('Resizing: ', feats.shape[1:3], ' to: ', x.shape[1:3])
+                saved_h_rs.append(tf.image.resize(feats, x.shape[1:3]))
+                print('new size: ', saved_h_rs[-1].shape)
+            h = tf.concat(saved_h_rs, axis=-1)
+            print('Concated: ', h.shape)
+            # Perform reconstruction
+            h = self.recon_lyr(h)
+            print('Reconstructed: ', h.shape)
+            return h 
         else:
-            #return features_small, features_medium, features_large
-            return features_all
+            return saved_h
+
+
         
 class SOD_Model:
     ''' 
